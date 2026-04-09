@@ -1,0 +1,15 @@
+{
+  "name": "pokebuddy-marketplace",
+  "description": "Pokémon companion plugins for Claude Code",
+  "plugins": [
+    {
+      "name": "pokebuddy",
+      "version": "1.0.0",
+      "description": "Pokémon companion system for Claude Code — earn XP through prompts, watch your partner level up and evolve",
+      "source": {
+        "source": "github",
+        "repo": "SimplySylvia/pokebuddy"
+      }
+    }
+  ]
+}

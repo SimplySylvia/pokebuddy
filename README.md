@@ -27,29 +27,20 @@ If you don't have Rust: install it first with `curl https://sh.rustup.rs | sh`, 
 
 ## Installation
 
-1. Clone this repo:
-   ```bash
-   git clone https://github.com/sylvia.hart/pokebuddy
-   cd pokebuddy
-   ```
+Inside Claude Code, run these two commands:
 
-2. Install dependencies and build:
-   ```bash
-   npm install
-   npm run build
-   ```
+```
+/plugin marketplace add SimplySylvia/pokebuddy
+/plugin install pokebuddy@pokebuddy-marketplace
+```
 
-3. Install the plugin in Claude Code. In your `~/.claude/settings.json`, add the plugin path:
-   ```json
-   {
-     "plugins": ["/path/to/pokebuddy"]
-   }
-   ```
+Then restart Claude Code and run:
 
-4. Restart Claude Code and run:
-   ```
-   /pokebuddy setup
-   ```
+```
+/pokebuddy setup
+```
+
+That's it — no cloning, no build step required. The compiled `dist/` is included in the repo.
 
 ---
 
