@@ -1,0 +1,13 @@
+{
+  "name": "pokebuddy",
+  "version": "1.0.0",
+  "description": "Pokémon companion system for Claude Code",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}
