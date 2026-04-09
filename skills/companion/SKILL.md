@@ -57,22 +57,13 @@ console.log(JSON.stringify([a, b, c]));
 "
 ```
 
-For each of the 3 Pokémon, render its sprite (stacked vertically):
+Render all three sprites in a **single Bash call** so they appear together in one output window. Using the IDs from `[a, b, c]`, construct one chained command:
+
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <pokedexId> --hide-name
+printf "── Option 1: [a.name] (#[a.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [a.id] --hide-name && printf "\n── Option 2: [b.name] (#[b.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [b.id] --hide-name && printf "\n── Option 3: [c.name] (#[c.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [c.id] --hide-name
 ```
 
-Display each sprite with the Pokémon's name and Pokédex number below it, like:
-```
-[sprite]
-1. Bulbasaur (#1)
-
-[sprite]
-2. Charmander (#4)
-
-[sprite]
-3. Squirtle (#7)
-```
+**Critical rendering rule:** ANSI sprite output renders correctly in the Bash tool output panel — never paste raw ANSI into your text response. All three sprites **must** go in a single bash call so they appear together in one uncollapsed output panel.
 
 Ask: "Which Pokémon will you choose? (1, 2, or 3)"
 
@@ -209,11 +200,16 @@ Display all Pokémon in the party (up to 3).
 node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
 ```
 
-For each Pokémon in `state.party` (max 3):
-- Render sprite: `node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species>`
-- Show: `▶ Slot [N] — [Name] (Level [X] | [Nature])` — use ▶ for the active slot, `  ` for others
-- If shiny: add ✨ to the name
-- If egg: show "🥚 Mystery Egg — hatches in [hatchAt] prompts"
+Render all party members in a **single Bash call** so they appear together in one uncollapsed output panel. Build one chained command for all occupied slots, for example with 2 Pokémon:
+
+```bash
+printf "▶ Slot 1 — [Name] (Level [X] | [Nature])\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species> [--shiny if shiny] && printf "\n  Slot 2 — [Name] (Level [X] | [Nature])\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species> [--shiny if shiny]
+```
+
+Rules:
+- Use `▶` for the active slot, leading spaces for others
+- If shiny: add ✨ to the name in the label
+- If egg: replace the sprite call with `printf "🥚 Mystery Egg — hatches in [hatchAt] prompts\n"`
 
 If party has fewer than 3 Pokémon, note: "[X]/3 slots filled"
 
