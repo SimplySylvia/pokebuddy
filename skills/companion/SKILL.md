@@ -51,13 +51,17 @@ Ask the user: "How would you like to receive your first Pokémon companion?"
 Run this JavaScript to get 3 random starters:
 ```bash
 node -e "
-const { getThreeRandomStarters } = await import('${CLAUDE_PLUGIN_ROOT}/dist/pokemon-data.js');
-const [a, b, c] = getThreeRandomStarters();
-console.log(JSON.stringify([a, b, c]));
+const { getThreeRandomStarters, getRandomNature } = await import('${CLAUDE_PLUGIN_ROOT}/dist/pokemon-data.js');
+const options = getThreeRandomStarters().map(p => ({
+  ...p,
+  nature: getRandomNature(),
+  shiny: Math.random() < 1/20
+}));
+console.log(JSON.stringify(options));
 "
 ```
 
-Render all three sprites in a **single Bash call** so they appear together in one output window. Using the IDs from `[a, b, c]`, construct one chained command:
+Render all three sprites in a **single Bash call** so they appear together in one output window. Using the IDs from `options[0]`, `options[1]`, `options[2]`, construct one chained command:
 
 ```bash
 printf "── Option 1: [a.name] (#[a.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [a.id] --hide-name && printf "\n── Option 2: [b.name] (#[b.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [b.id] --hide-name && printf "\n── Option 3: [c.name] (#[c.id]) ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [c.id] --hide-name
