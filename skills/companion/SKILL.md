@@ -64,7 +64,7 @@ console.log(JSON.stringify([a, b, c]));
 Render all three sprites in a **single Bash call** so they appear together in one output window. Using the IDs from `a`, `b`, `c`, construct one chained command:
 
 ```bash
-printf "── Option 1: [✨ if a.shiny][a.name] (#[a.id]) | [a.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [a.id] --hide-name [--shiny if a.shiny] && printf "\n── Option 2: [✨ if b.shiny][b.name] (#[b.id]) | [b.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [b.id] --hide-name [--shiny if b.shiny] && printf "\n── Option 3: [✨ if c.shiny][c.name] (#[c.id]) | [c.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [c.id] --hide-name [--shiny if c.shiny]
+printf "── Option 1: [✨ if a.shiny][a.species] (#[a.pokedexId]) | [a.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [a.pokedexId] --hide-name [--shiny if a.shiny] && printf "\n── Option 2: [✨ if b.shiny][b.species] (#[b.pokedexId]) | [b.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [b.pokedexId] --hide-name [--shiny if b.shiny] && printf "\n── Option 3: [✨ if c.shiny][c.species] (#[c.pokedexId]) | [c.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [c.pokedexId] --hide-name [--shiny if c.shiny]
 ```
 
 Label rules:
