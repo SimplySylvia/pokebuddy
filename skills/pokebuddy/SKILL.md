@@ -5,6 +5,7 @@ description: >
   mute, unmute, off, cancel-evolution, and settings. Use it whenever the user invokes
   /pokebuddy or any pokebuddy subcommand. Manages Pokémon companion state, sprite
   display, XP tracking, evolution, and quip configuration.
+argument-hint: "[setup|show|stats|party|switch|mute|unmute|off|cancel-evolution|settings]"
 ---
 
 # Pokebuddy Skill
