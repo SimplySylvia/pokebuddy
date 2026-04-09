@@ -1,5 +1,8 @@
 {
   "name": "pokebuddy-marketplace",
+  "owner": {
+    "name": "SimplySylvia"
+  },
   "description": "Pokémon companion plugins for Claude Code",
   "plugins": [
     {
