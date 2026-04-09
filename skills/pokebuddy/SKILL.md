@@ -1,5 +1,5 @@
 ---
-name: pokebuddy
+name: companion
 description: >
   This skill handles all /pokebuddy commands: setup, show, stats, party, switch,
   mute, unmute, off, cancel-evolution, and settings. Use it whenever the user invokes
