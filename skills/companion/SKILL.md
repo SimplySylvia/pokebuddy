@@ -93,6 +93,10 @@ Example for a Jolly Charmander: *"A cheerful fire lizard who celebrates every su
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" init <species> <pokedexId> <nature> "<nickname or empty>"
 ```
+If the chosen option was shiny (i.e. `a.shiny`, `b.shiny`, or `c.shiny` was true for the chosen option), also run:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag party.0.shiny true
+```
 Then store the personality:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-personality "<personality description>"
