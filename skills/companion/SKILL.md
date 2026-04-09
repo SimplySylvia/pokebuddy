@@ -81,13 +81,7 @@ Ask: "Which Pokémon will you choose? (1, 2, or 3)"
 After the user picks, ask: "Give your Pokémon a nickname? (Press Enter to skip)"
 
 **Step 5 — Assign nature and generate personality:**
-Pick a random nature:
-```bash
-node -e "
-const { getRandomNature } = await import('${CLAUDE_PLUGIN_ROOT}/dist/pokemon-data.js');
-console.log(JSON.stringify(getRandomNature()));
-"
-```
+Use the nature pre-rolled for the chosen option: `a.nature` for Option 1, `b.nature` for Option 2, `c.nature` for Option 3. No additional roll is needed.
 
 Then generate a short personality description (1-2 sentences) yourself, informed by:
 - The Pokémon's species (their personality in the games, their type, their lore)
