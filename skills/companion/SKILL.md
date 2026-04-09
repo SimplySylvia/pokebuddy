@@ -68,9 +68,10 @@ printf "── Option 1: [✨ if a.shiny][a.name] (#[a.id]) | [a.nature.name] na
 ```
 
 Label rules:
-- Always include `| [nature.name] nature` after the Pokédex ID
-- If `shiny=true`: prefix name with `✨ ` and append `--shiny` to the sprite call
-- If `shiny=false`: no prefix, no `--shiny` flag
+- Always include `| [x.nature.name] nature` after the Pokédex ID (where `x` is `a`, `b`, or `c`)
+- If `x.shiny` is true: prefix name with `✨ ` and append `--shiny` to the sprite call
+- If `x.shiny` is false: no prefix, no `--shiny` flag
+- Square-bracket placeholders like `[✨ if x.shiny]` and `[--shiny if x.shiny]` are conditional: include the contents when the condition is true, include nothing (not even a space) when false
 
 **Critical rendering rule:** ANSI sprite output renders correctly in the Bash tool output panel — never paste raw ANSI into your text response. All three sprites **must** go in a single bash call so they appear together in one uncollapsed output panel.
 
