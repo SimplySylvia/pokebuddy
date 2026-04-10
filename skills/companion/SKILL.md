@@ -12,7 +12,7 @@ argument-hint: "[setup|show|stats|party|switch|mute|unmute|off|cancel-evolution|
 
 You are handling a `/pokebuddy` command. Follow the instructions for the specific subcommand below.
 
-**Important:** All state operations use the compiled TypeScript CLI at `${CLAUDE_PLUGIN_ROOT}/dist/state.js`. All sprite rendering uses `${CLAUDE_PLUGIN_ROOT}/dist/sprites.js`. Always use `node` to call these directly from the Bash tool.
+**Important:** All state operations use the bash CLI at `${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh`. All sprite rendering uses `pokeget` directly. Always use `bash` to call state-cli.sh from the Bash tool. Sprites render in the Bash tool's terminal output — never paste ANSI/sprite output into your text response.
 
 ---
 
@@ -22,10 +22,10 @@ First-time setup flow. Creates the initial state and picks a starter Pokémon.
 
 **Step 0 — Check pokeget installation:**
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" --check
+command -v pokeget && echo "ok" || echo "pokeget not installed. Install with: brew install talwat/tap/pokeget  OR  cargo install pokeget"
 ```
 - If it prints `ok`: proceed normally.
-- If it exits non-zero: display the output to the user verbatim — it contains platform-specific install instructions. Then say:
+- If it prints the install message: display it to the user verbatim, then say:
 
   > "Pokebuddy works in text-only mode without pokeget — you'll see names instead of sprites. You can install it now and rerun `/pokebuddy setup`, or continue and install it later."
 
@@ -35,7 +35,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" --check
 
 **Step 1 — Check existing state:**
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 If state already exists with a party, tell the user: "You already have a Pokémon companion! Run `/pokebuddy show` to see them, or tell me 'reset' if you want to start over."
 
@@ -48,23 +48,22 @@ Ask the user: "How would you like to receive your first Pokémon companion?"
 
 **Step 3a — Starter selection flow:**
 
-Run this JavaScript to get 3 random starters:
+Run this to get 3 random starters with natures and shiny rolls:
 ```bash
-node -e "
-const { getThreeRandomStarters, getRandomNature } = await import('${CLAUDE_PLUGIN_ROOT}/dist/pokemon-data.js');
-const [a, b, c] = getThreeRandomStarters().map(p => ({
-  ...p,
-  nature: getRandomNature(),
-  shiny: Math.random() < 1/20
-}));
-console.log(JSON.stringify([a, b, c]));
-"
+python3 - "${CLAUDE_PLUGIN_ROOT}/data/pokemon-data.json" << 'EOF'
+import sys, json, random
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+sample = random.sample(d["firstStagePokemon"], 3)
+result = [{**p, "nature": random.choice(d["natures"]), "shiny": random.random() < 1/20} for p in sample]
+print(json.dumps(result, indent=2))
+EOF
 ```
 
-Render all three sprites in a **single Bash call** so they appear together in one output window. Using the IDs from `a`, `b`, `c`, construct one chained command:
+Render all three sprites in a **single Bash call** so they appear together in one output window. Using the data from the JSON above (call the entries `a`, `b`, `c`), construct one chained command:
 
 ```bash
-printf "── Option 1: [✨ if a.shiny][a.species] (#[a.pokedexId]) | [a.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [a.pokedexId] --hide-name [--shiny if a.shiny] && printf "\n── Option 2: [✨ if b.shiny][b.species] (#[b.pokedexId]) | [b.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [b.pokedexId] --hide-name [--shiny if b.shiny] && printf "\n── Option 3: [✨ if c.shiny][c.species] (#[c.pokedexId]) | [c.nature.name] nature ──\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" [c.pokedexId] --hide-name [--shiny if c.shiny]
+printf "── Option 1: [✨ if a.shiny][a.species] (#[a.pokedexId]) | [a.nature.name] nature ──\n" > /dev/tty && pokeget [a.pokedexId] --hide-name [--shiny if a.shiny] > /dev/tty && printf "\n── Option 2: [✨ if b.shiny][b.species] (#[b.pokedexId]) | [b.nature.name] nature ──\n" > /dev/tty && pokeget [b.pokedexId] --hide-name [--shiny if b.shiny] > /dev/tty && printf "\n── Option 3: [✨ if c.shiny][c.species] (#[c.pokedexId]) | [c.nature.name] nature ──\n" > /dev/tty && pokeget [c.pokedexId] --hide-name [--shiny if c.shiny] > /dev/tty
 ```
 
 Label rules:
@@ -73,7 +72,7 @@ Label rules:
 - If `x.shiny` is false: no prefix, no `--shiny` flag
 - Square-bracket placeholders like `[✨ if x.shiny]` and `[--shiny if x.shiny]` are conditional: include the contents when the condition is true, include nothing (not even a space) when false
 
-**Critical rendering rule:** ANSI sprite output renders correctly in the Bash tool output panel — never paste raw ANSI into your text response. All three sprites **must** go in a single bash call so they appear together in one uncollapsed output panel.
+**Critical rendering rule:** All sprite calls use `> /dev/tty` to write directly to the terminal, bypassing Claude Code's collapsible tool output panel. Never paste raw ANSI into your text response.
 
 Ask: "Which Pokémon will you choose? (1, 2, or 3)"
 
@@ -91,52 +90,70 @@ Example for a Jolly Charmander: *"A cheerful fire lizard who celebrates every su
 
 **Step 6 — Initialize state:**
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" init <species> <pokedexId> <nature> "<nickname or empty>"
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" init <species> <pokedexId> <nature> "<nickname or empty>"
 ```
 If the chosen option was shiny (i.e. `a.shiny`, `b.shiny`, or `c.shiny` was true for the chosen option), also run:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag party.0.shiny true
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag party.0.shiny true
 ```
 Then store the personality:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-personality "<personality description>"
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-personality "<personality description>"
 ```
 
-**Step 7 — Wire up the status line:**
+**Step 7 — Wire up the status line and hooks:**
 
-Add Pokebuddy to the Claude Code status bar (the same location `/buddy` appears) by updating `~/.claude/settings.json`. Read the current settings first:
+Register Pokebuddy's hooks and status line in `~/.claude/settings.json`:
 ```bash
-cat ~/.claude/settings.json 2>/dev/null || echo "{}"
+python3 - "${HOME}/.claude/settings.json" "${CLAUDE_PLUGIN_ROOT}" << 'EOF'
+import sys, json, os
+
+settings_path, plugin_root = sys.argv[1], sys.argv[2]
+try:
+    with open(settings_path) as f:
+        settings = json.load(f)
+except Exception:
+    settings = {}
+
+# Status line — sprite + stats bar after every response
+settings["statusLine"] = {
+    "type": "command",
+    "command": f'bash "{plugin_root}/hooks/statusline.sh"'
+}
+
+# Register hooks without duplicating existing entries
+def ensure_hook(event, command, timeout=None):
+    section = settings.setdefault("hooks", {})
+    event_list = section.setdefault(event, [])
+    for group in event_list:
+        for h in group.get("hooks", []):
+            if h.get("command", "") == command:
+                return  # already registered
+    entry = {"type": "command", "command": command}
+    if timeout:
+        entry["timeout"] = timeout
+    event_list.append({"hooks": [entry]})
+
+ensure_hook("SessionStart",     f'bash "{plugin_root}/hooks/session-start.sh"',  timeout=15)
+ensure_hook("UserPromptSubmit", f'bash "{plugin_root}/hooks/prompt-submit.sh"',  timeout=10)
+ensure_hook("Stop",             f'bash "{plugin_root}/hooks/stop-hook.sh"',       timeout=30)
+
+with open(settings_path, "w") as f:
+    json.dump(settings, f, indent=2)
+print("Pokebuddy configured: status line + session/prompt/stop hooks registered.")
+EOF
 ```
 
-Then merge in the `statusLine` key using the Bash tool. If `statusLine` doesn't exist yet, add it:
-```bash
-node -e "
-const fs = require('fs');
-const path = require('path');
-const settingsPath = path.join(process.env.HOME, '.claude', 'settings.json');
-const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : {};
-settings.statusLine = {
-  type: 'command',
-  command: 'bash \"${CLAUDE_PLUGIN_ROOT}/hooks/statusline.sh\"'
-};
-fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-console.log('Status line configured.');
-"
-```
-
-Tell the user: "Your Pokémon will now appear in the status bar at the bottom of your terminal — just like `/buddy`, but with XP tracking. You'll see their name, level, and progress bar update after every response."
-
-If `settings.json` already has a `statusLine` entry from another source, show the user both values and ask which they'd like to keep, or whether to combine them (e.g., run both scripts in sequence).
+Tell the user: "Your Pokémon will now appear in the status bar at the bottom of your terminal. XP updates after every response, and Star will chime in occasionally between your prompts."
 
 **Step 8 — Confirm:**
-Display the Pokémon's sprite one more time and say:
+Display the Pokémon's sprite one more time (`> /dev/tty` for direct terminal output) and say:
 > "Meet [Name]! [Personality description] They're ready to grow alongside your code. Every prompt earns XP — reach level 16 for your first evolution!"
 
 **Step 3b — Egg flow (if user chose mystery egg):**
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" init egg 0 <random_nature>
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag party.0.hatchAt 25
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" init egg 0 <random_nature>
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag party.0.hatchAt 25
 ```
 Tell the user: "You received a mysterious egg! It will hatch in 25 prompts. What could be inside...?"
 
@@ -147,12 +164,12 @@ Tell the user: "You received a mysterious egg! It will hatch in 25 prompts. What
 Display the active Pokémon with basic stats.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
-Render the sprite:
+Render the sprite (write to /dev/tty so it appears directly in the terminal, not in a collapsible tool output panel):
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species>   # add --shiny if shiny=true
+pokeget <species> > /dev/tty   # add --shiny if shiny=true
 ```
 
 Display below the sprite:
@@ -174,7 +191,7 @@ If the Pokémon is an egg, show: "🥚 Mystery Egg — hatches in [hatchAt] more
 Full stat card for the active Pokémon.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
 Display:
@@ -205,13 +222,13 @@ Total prompts:   [state.totalPrompts]
 Display all Pokémon in the party (up to 3).
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
 Render all party members in a **single Bash call** so they appear together in one uncollapsed output panel. Build one chained command for all occupied slots, for example with 2 Pokémon:
 
 ```bash
-printf "▶ Slot 1 — [Name] (Level [X] | [Nature])\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species> [--shiny if shiny] && printf "\n  Slot 2 — [Name] (Level [X] | [Nature])\n" && node "${CLAUDE_PLUGIN_ROOT}/dist/sprites.js" <species> [--shiny if shiny]
+printf "▶ Slot 1 — [Name] (Level [X] | [Nature])\n" > /dev/tty && pokeget <species> [--shiny if shiny] > /dev/tty && printf "\n  Slot 2 — [Name] (Level [X] | [Nature])\n" > /dev/tty && pokeget <species> [--shiny if shiny] > /dev/tty
 ```
 
 Rules:
@@ -228,13 +245,13 @@ If party has fewer than 3 Pokémon, note: "[X]/3 slots filled"
 Change the active Pokémon.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
 Validate `slot` is 1-3 and that a Pokémon exists in that slot.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag activeSlot <slot-1>
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag activeSlot <slot-1>
 ```
 (activeSlot is 0-indexed, so slot 1 → 0, slot 2 → 1, slot 3 → 2)
 
@@ -247,7 +264,7 @@ Confirm: "Switched to [Name]! They're now your active companion."
 Silence periodic quips.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag settings.muteQuips true
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag settings.muteQuips true
 ```
 
 Confirm: "[Name] will stay quiet for now. Run /pokebuddy unmute when you want to hear from them again."
@@ -259,7 +276,7 @@ Confirm: "[Name] will stay quiet for now. Run /pokebuddy unmute when you want to
 Re-enable periodic quips.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag settings.muteQuips false
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag settings.muteQuips false
 ```
 
 Confirm: "[Name] is back! They'll chime in occasionally as you work."
@@ -271,7 +288,7 @@ Confirm: "[Name] is back! They'll chime in occasionally as you work."
 Hide Pokebuddy for the session.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag enabled false
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag enabled false
 ```
 
 Confirm: "Pokebuddy is resting. Your XP will resume next session. Use /pokebuddy show to wake them up."
@@ -283,15 +300,15 @@ Confirm: "Pokebuddy is resting. Your XP will resume next session. Use /pokebuddy
 Cancel a pending evolution (the "B button" mechanic).
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
 If `evolutionPending` is false, respond: "There's no pending evolution to cancel right now."
 
 If true:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" clear-flag evolutionPending
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag evolutionCancelledUntil <currentLevel+1>
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" clear-flag evolutionPending
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag evolutionCancelledUntil <currentLevel+1>
 ```
 
 Confirm: "Got it! [Name] stopped evolving. They'll have another chance at level [currentLevel+1]."
@@ -303,7 +320,7 @@ Confirm: "Got it! [Name] stopped evolving. They'll have another chance at level 
 View and adjust settings.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" read
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read
 ```
 
 Display current settings:
@@ -321,7 +338,7 @@ If the user specifies a change in natural language, interpret it and apply:
 - "disable sprite on startup" → `set-flag settings.showSpriteOnSession false`
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/state.js" set-flag <key> <value>
+bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-flag <key> <value>
 ```
 
 Confirm the change.
@@ -330,9 +347,9 @@ Confirm the change.
 
 ## Error handling
 
-If `node dist/state.js read` fails (exits non-zero with "NO_STATE"):
+If `bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" read` fails (exits non-zero, prints "NO_STATE" to stderr):
 → Prompt the user to run `/pokebuddy setup` first.
 
 If `pokeget` is not available:
 → Skip sprite rendering, show a text-only fallback with just the Pokémon name.
-→ Optionally mention: "Install `pokeget` for sprite rendering: `cargo install pokeget`"
+→ Optionally mention: "Install `pokeget` for sprite rendering: `brew install talwat/tap/pokeget` or `cargo install pokeget`"

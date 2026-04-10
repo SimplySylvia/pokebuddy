@@ -1,4 +1,5 @@
-# Pokebuddy
+![Banner](/assets/banner.png)
+# Pokebuddy (WIP 🏗️)
 
 A Claude Code plugin that brings a Pokémon companion to your terminal. Earn XP through real prompts, watch your Pokémon level up and evolve, and get occasional personality-driven quips from your partner as you code.
 

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Pokebuddy UserPromptSubmit hook (async: true)
-# Awards XP for the prompt and rolls for quip trigger.
-# Must complete quickly — runs async so it won't block Claude's response.
+# Awards XP for the prompt. Runs async so it won't block Claude's response.
 set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-STATE_BIN="node \"${PLUGIN_ROOT}/dist/state.js\""
+export CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT"
+
+# shellcheck source=../lib/state.sh
+source "${PLUGIN_ROOT}/lib/state.sh"
 
 # Read hook input from stdin
 INPUT=$(cat)
@@ -20,8 +22,7 @@ fi
 # Measure character count
 CHAR_COUNT=${#PROMPT_TEXT}
 
-# Award XP (this also handles quip roll and evolution check atomically)
-eval "$STATE_BIN award-xp \"$CHAR_COUNT\"" &>/dev/null || true
+# Award XP (handles quip roll and evolution check atomically)
+pb_award_xp "$CHAR_COUNT" &>/dev/null || true
 
-# UserPromptSubmit hook outputs nothing — we don't need to inject content here
 exit 0
