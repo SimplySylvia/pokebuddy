@@ -67,18 +67,13 @@ if command -v pokeget &>/dev/null; then
     SHINY_FLAG=""
     [ "$SHINY" = "true" ] && SHINY_FLAG="--shiny"
 
-    SPRITE_CACHE="${STATE_DIR}/sprite-${SPECIES}-${SHINY}.txt"
-    if [ ! -s "$SPRITE_CACHE" ]; then
-      # Force truecolor so the cached bytes match the display context
-      COLORTERM=truecolor pokeget "$SPECIES" --hide-name ${SHINY_FLAG:+"$SHINY_FLAG"} \
-        > "$SPRITE_CACHE" 2>/dev/null || rm -f "$SPRITE_CACHE"
-    fi
-
-    if [ -s "$SPRITE_CACHE" ]; then
-      cat "$SPRITE_CACHE"
-    fi
+    # Reset before so any leftover background color from the previous render
+    # doesn't bleed into the sprite. Reset after for the stats line below.
+    printf "\033[0m"
+    COLORTERM=truecolor pokeget "$SPECIES" --hide-name ${SHINY_FLAG:+"$SHINY_FLAG"} \
+      2>/dev/null || true
+    printf "\033[0m"
   fi
-  printf "\033[0m"
 fi
 
 # ---------------------------------------------------------------------------

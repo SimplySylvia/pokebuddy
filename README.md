@@ -51,7 +51,7 @@ That's it — no cloning, no build step required. The plugin is pure bash and py
 
 `/pokebuddy setup` walks you through two options:
 
-**Choose a starter** — Three random Pokémon from the full Gen 1–8 first-stage pool (~400 options) are displayed as terminal sprites. Pick one, give it an optional nickname, and it gets assigned a random nature that shapes its personality forever.
+**Choose a starter** — Three random Pokémon from the full Gen 1-8 first-stage pool (~400 options) are displayed as terminal sprites. Pick one, give it an optional nickname, and it gets assigned a random nature that shapes its personality forever.
 
 **Mystery egg** — Receive an egg that hatches into a surprise Pokémon after 25 prompts. Good for the curious and patient.
 
@@ -84,7 +84,7 @@ XP thresholds follow a curve inspired by Pokémon's Medium Slow experience group
 | 50 | 2,500 |
 | 100 | 10,000 |
 
-At ~15–20 prompts per day, expect your first evolution in 1–2 weeks.
+At ~15-20 prompts per day, expect your first evolution in 1-2 weeks.
 
 ### Evolution
 
@@ -128,7 +128,7 @@ All 25 natures are supported, each with a distinct voice:
 | `/pokebuddy show` | Display your active Pokémon's sprite and XP progress |
 | `/pokebuddy stats` | Full stat card: level, XP, nature, personality, evolution info |
 | `/pokebuddy party` | View all Pokémon in your party (up to 3) |
-| `/pokebuddy switch <slot>` | Change your active Pokémon (slots 1–3) |
+| `/pokebuddy switch <slot>` | Change your active Pokémon (slots 1-3) |
 | `/pokebuddy mute` | Silence periodic quips |
 | `/pokebuddy unmute` | Re-enable quips |
 | `/pokebuddy off` | Hide Pokebuddy for the session |
@@ -180,7 +180,7 @@ State is persisted at `~/.claude/plugins/data/pokebuddy-pokebuddy-marketplace/po
 
 ## Pokémon Coverage
 
-Sprites are rendered via [pokeget-rs](https://github.com/talwat/pokeget-rs), which covers Gen 1–8 (~898 Pokémon). The starter pool includes all first-stage species through Gen 8. Gen 9+ is not supported — the underlying sprite library doesn't cover them.
+Sprites are rendered via [pokeget-rs](https://github.com/talwat/pokeget-rs), which covers Gen 1-8 (~898 Pokémon). The starter pool includes all first-stage species through Gen 8. Gen 9+ is not supported — the underlying sprite library doesn't cover them.
 
 ---
 
@@ -229,10 +229,73 @@ State lives in a single JSON file. V2 fields (`inventory`, `pokedex`, `shinyChar
 
 ---
 
-## V2 Roadmap
+## Features
 
-- Pokéball earning at XP milestones (every 500 XP → Poké Ball, etc.)
-- Wild encounter and catching flow with shake animation
-- Rarity tiers: Common / Uncommon / Rare / Epic / Legendary
-- Shiny encounters (1/4096 base rate; 1/512 with Shiny Charm after 25 caught species)
-- Pokédex completion tracking
+### Implemented (v1)
+
+**Companion setup**
+- Starter selection: 3 random Pokémon from the full Gen 1-8 first-stage pool (~400 options) rendered as terminal sprites
+- Nature pre-rolled at selection time; displayed alongside each starter option
+- Shiny variant: ~5% chance any starter is shiny (rendered with `--shiny` flag)
+- Optional nickname during setup
+- LLM-generated personality description (1-2 sentences) based on species + nature, stored in state
+- Mystery egg alternative: hatches into a surprise Pokémon after 25 prompts
+
+**XP and leveling**
+- XP awarded on every prompt via `UserPromptSubmit` hook (async, non-blocking)
+- Formula: `max(1, floor(character_count / 100))`
+- Level curve follows Pokémon's Medium Slow experience group (level 5 → 100)
+
+**Evolution**
+- Canonical Gen 1-8 evolution thresholds stored in `data/pokemon-data.json`
+- Evolution sequence renders before/after sprites directly to the terminal
+- Cancel-evolution support ("B button" mechanic): defers to next level
+
+**Quips**
+- 15% per-prompt chance to trigger a quip (configurable)
+- Quip prompt built from species, nature, level, personality, and last prompt context
+- All 25 natures supported with distinct personality voices
+- Nature-based greeting pool on session start (deterministic variation per session)
+
+**Display**
+- Status bar updates after every response via `statusLine` hook
+- `/pokebuddy show`: sprite + XP progress bar
+- `/pokebuddy stats`: full stat card (level, XP, nature, personality, evolution info)
+- `/pokebuddy party`: all party members rendered in a single terminal output
+- Shiny marker (✨) on all display surfaces
+
+**Quality of life**
+- `pokeget` presence check at setup with graceful text-only fallback
+- Atomic state writes (temp file + rename) to prevent corruption
+- Status bar falls back gracefully when no state exists
+
+---
+
+### Planned (v2)
+
+**Pokéball system**
+- Earn balls at XP milestones: Poké Ball (500 XP), Great Ball (2,000 XP), Ultra Ball (5,000 XP), Master Ball (50,000 XP, once only)
+- `/pokebuddy catch` command to spend a ball and encounter a wild Pokémon
+
+**Wild encounters and catching**
+- Rarity-tiered encounter pool: Common 60% / Uncommon 25% / Rare 10% / Epic 4% / Legendary 1%
+- Shake animation (1-3 shakes) before catch success/failure reveal
+- Catch rate varies by ball type and rarity modifier
+- Party cap of 6 (up from current 3)
+
+**Shiny encounters**
+- Base rate: 1/4,096 per encounter
+- Shiny Charm unlock after registering 25+ unique species: improves rate to 1/512
+
+**Pokédex**
+- `/pokebuddy pokedex` command: registry of caught species and completion percentage
+
+**Nicknames**
+- Nickname prompt during `/pokebuddy catch` flow (nicknames at setup are already supported)
+
+**Performance**
+- Per-session quip cap (maximum 5 quips per session)
+- Context-category caching to reduce redundant quip LLM calls
+
+**Coverage**
+- Gen 9+ sprite supplementary source (if a viable terminal sprite library becomes available)
