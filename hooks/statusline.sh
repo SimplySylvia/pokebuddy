@@ -125,3 +125,18 @@ case "$SPECIES" in
 esac
 
 printf "  ${SHINY_MARK}${BOLD}${SPECIES_COLOR}${DISPLAY_NAME}${RESET}  ${DIM}Lv${RESET}${BOLD}\033[37m${LEVEL}${RESET}  ${BAR}  ${DIM}${XP} XP${RESET}${MUTE_MARK}\n"
+
+# Session greeting — extra line shown for 45s after session start.
+# Written by session-start.sh; age-checked here; cleaned up when stale.
+GREETING_FILE="${STATE_DIR}/session-greeting.txt"
+if [ -f "$GREETING_FILE" ]; then
+  file_age=$(( $(date +%s) - $(stat -f %m "$GREETING_FILE" 2>/dev/null || echo 0) ))
+  if [ "$file_age" -lt 45 ] 2>/dev/null; then
+    GREETING=$(cat "$GREETING_FILE" 2>/dev/null || echo "")
+    if [ -n "$GREETING" ]; then
+      printf "  ${BRIGHT_CYAN}${GREETING}${RESET}\n"
+    fi
+  else
+    rm -f "$GREETING_FILE"
+  fi
+fi

@@ -90,7 +90,20 @@ seed = int(hashlib.md5((display_name + nature).encode()).hexdigest(), 16)
 rng = random.Random(seed + random.randint(0, 999))
 greeting_text = rng.choice(pool)
 
-system_msg = f"{display_name}: {greeting_text}"
+# Write greeting to a temp file so statusLine can display it in the status bar.
+# statusLine checks file age and shows it for 45 seconds, then reverts to sprite+stats.
+import os
+state_dir = os.environ.get(
+    'CLAUDE_PLUGIN_DATA',
+    os.path.join(os.path.expanduser('~'), '.claude/plugins/data/pokebuddy-pokebuddy-marketplace')
+)
+greeting_file = os.path.join(state_dir, 'session-greeting.txt')
+try:
+    os.makedirs(state_dir, exist_ok=True)
+    with open(greeting_file, 'w') as gf:
+        gf.write(f"{greeting_text}\n")
+except Exception:
+    pass
 
 # Context for Claude — tells it who the companion is and to stay in-character for quips
 context = (
@@ -101,7 +114,6 @@ context = (
 )
 
 payload = {
-    "systemMessage": system_msg,
     "hookSpecificOutput": {
         "hookEventName": "SessionStart",
         "additionalContext": context

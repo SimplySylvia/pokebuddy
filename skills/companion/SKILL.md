@@ -101,12 +101,13 @@ Then store the personality:
 bash "${CLAUDE_PLUGIN_ROOT}/lib/state-cli.sh" set-personality "<personality description>"
 ```
 
-**Step 7 — Wire up the status line and hooks:**
+**Step 7 — Wire up the status line:**
 
-Register Pokebuddy's hooks and status line in `~/.claude/settings.json`:
+The SessionStart, UserPromptSubmit, and Stop hooks are auto-registered by the plugin system.
+Only the `statusLine` needs to be configured manually in `~/.claude/settings.json`:
 ```bash
 python3 - "${HOME}/.claude/settings.json" "${CLAUDE_PLUGIN_ROOT}" << 'EOF'
-import sys, json, os
+import sys, json
 
 settings_path, plugin_root = sys.argv[1], sys.argv[2]
 try:
@@ -121,30 +122,13 @@ settings["statusLine"] = {
     "command": f'bash "{plugin_root}/hooks/statusline.sh"'
 }
 
-# Register hooks without duplicating existing entries
-def ensure_hook(event, command, timeout=None):
-    section = settings.setdefault("hooks", {})
-    event_list = section.setdefault(event, [])
-    for group in event_list:
-        for h in group.get("hooks", []):
-            if h.get("command", "") == command:
-                return  # already registered
-    entry = {"type": "command", "command": command}
-    if timeout:
-        entry["timeout"] = timeout
-    event_list.append({"hooks": [entry]})
-
-ensure_hook("SessionStart",     f'bash "{plugin_root}/hooks/session-start.sh"',  timeout=15)
-ensure_hook("UserPromptSubmit", f'bash "{plugin_root}/hooks/prompt-submit.sh"',  timeout=10)
-ensure_hook("Stop",             f'bash "{plugin_root}/hooks/stop-hook.sh"',       timeout=30)
-
 with open(settings_path, "w") as f:
     json.dump(settings, f, indent=2)
-print("Pokebuddy configured: status line + session/prompt/stop hooks registered.")
+print("Pokebuddy configured: status line registered.")
 EOF
 ```
 
-Tell the user: "Your Pokémon will now appear in the status bar at the bottom of your terminal. XP updates after every response, and Star will chime in occasionally between your prompts."
+Tell the user: "Your Pokémon will now appear in the status bar at the bottom of your terminal. XP updates after every response, and they'll chime in occasionally between your prompts."
 
 **Step 8 — Confirm:**
 Display the Pokémon's sprite one more time (`> /dev/tty` for direct terminal output) and say:

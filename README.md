@@ -1,5 +1,5 @@
 ![Banner](/assets/banner.png)
-# Pokebuddy (WIP 🏗️)
+# Pokebuddy
 
 A Claude Code plugin that brings a Pokémon companion to your terminal. Earn XP through real prompts, watch your Pokémon level up and evolve, and get occasional personality-driven quips from your partner as you code.
 
@@ -24,6 +24,8 @@ Your companion lives in the **status bar** at the bottom of the terminal — the
 
 If you don't have Rust: install it first with `curl https://sh.rustup.rs | sh`, then run `cargo install pokeget`.
 
+**python3** — used by all hooks and state operations. Comes pre-installed on macOS and most Linux distros.
+
 ---
 
 ## Installation
@@ -41,7 +43,7 @@ Then restart Claude Code and run:
 /pokebuddy setup
 ```
 
-That's it — no cloning, no build step required. The compiled `dist/` is included in the repo.
+That's it — no cloning, no build step required. The plugin is pure bash and python3.
 
 ---
 
@@ -140,33 +142,39 @@ All 25 natures are supported, each with a distinct voice:
 ```
 pokebuddy/
 ├── .claude-plugin/
-│   └── plugin.json          # Plugin manifest
-├── skills/
-│   └── pokebuddy/
-│       └── SKILL.md         # Slash command instructions for Claude
+│   ├── plugin.json          # Plugin manifest
+│   └── marketplace.json     # Marketplace listing metadata
+├── assets/
+│   └── banner.png
+├── commands/
+│   └── pokebuddy.md         # /pokebuddy command entry point
+├── data/
+│   └── pokemon-data.json    # Species, evolution chains, natures lookup data
+├── docs/
+│   └── PRD.md               # Product requirements document
 ├── hooks/
 │   ├── hooks.json           # Hook event registrations
-│   ├── session-start.sh     # Displays sprite + checks pokeget on session start
+│   ├── session-start.sh     # Greets user + injects companion context
 │   ├── prompt-submit.sh     # Awards XP per prompt (async)
 │   ├── stop-hook.sh         # Renders evolution sequence or quip after responses
 │   └── statusline.sh        # Compact companion bar (configured via settings.json)
-├── src/
-│   ├── pokemon-data.ts      # Species, evolution chains, natures, XP table
-│   ├── state.ts             # State read/write + CLI (award-xp, init, etc.)
-│   ├── sprites.ts           # pokeget wrapper + platform-aware install check
-│   └── quip.ts              # Quip prompt builder
-└── dist/                    # Compiled JS (run `npm run build`)
+├── lib/
+│   ├── state.sh             # Sourceable bash library: XP, leveling, evolution, state I/O
+│   └── state-cli.sh         # CLI wrapper used by skill commands (read, init, set-flag, etc.)
+└── skills/
+    └── companion/
+        └── SKILL.md         # All /pokebuddy subcommand instructions for Claude
 ```
 
 ### Hook flow
 
 ```
-Session starts      → session-start.sh   → show sprite, inject session context
-User types prompt   → prompt-submit.sh   → award XP, roll for quip (async)
+Session starts      → session-start.sh   → inject greeting + companion context
+User types prompt   → prompt-submit.sh   → award XP, check evolution, roll for quip (async)
 Claude responds     → stop-hook.sh       → evolution sequence OR quip, or silent
 ```
 
-State is persisted at `${CLAUDE_PLUGIN_DATA}/pokebuddy-state.json` (managed by Claude Code, survives updates). Fallback: `~/.claude/plugin-data/pokebuddy/pokebuddy-state.json`.
+State is persisted at `~/.claude/plugins/data/pokebuddy-pokebuddy-marketplace/pokebuddy-state.json`. The `CLAUDE_PLUGIN_DATA` env var points to this directory when hooks run; `lib/state.sh` falls back to the same path when called from skill commands.
 
 ---
 
@@ -187,14 +195,35 @@ State lives in a single JSON file. V2 fields (`inventory`, `pokedex`, `shinyChar
   "activeSlot": 0,
   "totalPrompts": 142,
   "totalXP": 505,
+  "shinyCharm": false,
+  "evolutionPending": false,
+  "evolutionCancelledUntil": null,
+  "quipTriggered": false,
+  "inventory": {
+    "pokeball": 0,
+    "greatball": 0,
+    "ultraball": 0,
+    "masterball": 0
+  },
   "party": [{
     "species": "charmeleon",
+    "pokedexId": 5,
     "nickname": "Ember",
     "nature": "Jolly",
     "level": 22,
     "xp": 505,
-    "personality": "A cheerful fire lizard who celebrates every successful build."
-  }]
+    "shiny": false,
+    "evolutionStage": 2,
+    "caughtAt": "2026-04-08T00:00:00Z",
+    "personality": "A cheerful fire lizard who celebrates every successful build.",
+    "hatchAt": null
+  }],
+  "pokedex": [5],
+  "settings": {
+    "quipFrequency": 0.15,
+    "muteQuips": false,
+    "showSpriteOnSession": true
+  }
 }
 ```
 
