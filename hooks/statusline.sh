@@ -67,12 +67,83 @@ if command -v pokeget &>/dev/null; then
     SHINY_FLAG=""
     [ "$SHINY" = "true" ] && SHINY_FLAG="--shiny"
 
-    # Reset before so any leftover background color from the previous render
-    # doesn't bleed into the sprite. Reset after for the stats line below.
-    printf "\033[0m"
-    COLORTERM=truecolor pokeget "$SPECIES" --hide-name ${SHINY_FLAG:+"$SHINY_FLAG"} \
-      2>/dev/null || true
-    printf "\033[0m"
+    SPRITE_CACHE="${STATE_DIR}/sprite-${SPECIES}-${SHINY}.txt"
+    if [ ! -s "$SPRITE_CACHE" ]; then
+      # Run pokeget inside a Python-created PTY so isatty(stdout) returns true.
+      # Without a real PTY, pokeget detects a pipe and swaps fg/bg on block chars.
+      # COLUMNS=220 gives it a wide canvas for correct centering.
+      python3 - "$SPECIES" "$SHINY" > "$SPRITE_CACHE" 2>/dev/null << 'PYEOF'
+import sys, os, pty, termios, struct, fcntl, select
+
+species, shiny = sys.argv[1], sys.argv[2] == 'true'
+cmd = ['pokeget', species, '--hide-name'] + (['--shiny'] if shiny else [])
+
+master_fd, slave_fd = pty.openpty()
+try:
+    fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, struct.pack('HHHH', 40, 220, 0, 0))
+except Exception:
+    pass
+
+pid = os.fork()
+if pid == 0:
+    os.close(master_fd)
+    os.setsid()
+    try:
+        fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
+    except Exception:
+        pass
+    for fd in (0, 1, 2):
+        os.dup2(slave_fd, fd)
+    if slave_fd > 2:
+        os.close(slave_fd)
+    os.execvpe(cmd[0], cmd, {**os.environ, 'COLORTERM': 'truecolor'})
+    os._exit(1)
+
+os.close(slave_fd)
+chunks = []
+while True:
+    try:
+        r, _, _ = select.select([master_fd], [], [], 3.0)
+        if not r:
+            break
+        data = os.read(master_fd, 4096)
+        if not data:
+            break
+        chunks.append(data)
+    except OSError:
+        break
+try:
+    os.waitpid(pid, 0)
+    os.close(master_fd)
+except Exception:
+    pass
+
+out = b''.join(chunks).replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+
+# Normalize left margin: pokeget centering varies by TTY context.
+# Find the minimum leading-space count across non-empty lines and
+# pad every line so that the tightest row has at least 4 spaces.
+lines = out.split(b'\n')
+non_empty = [l for l in lines if l.strip()]
+if non_empty:
+    def _leading(l):
+        return len(l) - len(l.lstrip(b' '))
+    min_margin = min(_leading(l) for l in non_empty)
+    if min_margin < 5:
+        pad = b' ' * (5 - min_margin)
+        lines = [pad + l if l.strip() else l for l in lines]
+    out = b'\n'.join(lines)
+
+sys.stdout.buffer.write(out)
+PYEOF
+      [ -s "$SPRITE_CACHE" ] || rm -f "$SPRITE_CACHE"
+    fi
+
+    if [ -s "$SPRITE_CACHE" ]; then
+      printf "\033[0m"
+      cat "$SPRITE_CACHE"
+      printf "\033[0m"
+    fi
   fi
 fi
 
