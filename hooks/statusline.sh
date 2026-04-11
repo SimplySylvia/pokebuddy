@@ -73,7 +73,9 @@ if command -v pokeget &>/dev/null; then
       # Without a real PTY, pokeget detects a pipe and swaps fg/bg on block chars.
       # COLUMNS=220 gives it a wide canvas for correct centering.
       python3 - "$SPECIES" "$SHINY" > "$SPRITE_CACHE" 2>/dev/null << 'PYEOF'
-import sys, os, pty, termios, struct, fcntl, select
+import sys, os, pty, termios, struct, fcntl, select, re as _re
+_ANSI = _re.compile(rb'\033\[[0-9;]*[A-Za-z]')
+def _visible(l): return _ANSI.sub(b'', l).strip()
 
 species, shiny = sys.argv[1], sys.argv[2] == 'true'
 cmd = ['pokeget', species, '--hide-name'] + (['--shiny'] if shiny else [])
@@ -124,17 +126,25 @@ out = b''.join(chunks).replace(b'\r\n', b'\n').replace(b'\r', b'\n')
 # Find the minimum leading-space count across non-empty lines and
 # pad every line so that the tightest row has at least 4 spaces.
 lines = out.split(b'\n')
-non_empty = [l for l in lines if l.strip()]
+
+# Strip leading and trailing blank lines that pokeget adds via PTY centering.
+while lines and not _visible(lines[0]):
+    lines.pop(0)
+while lines and not _visible(lines[-1]):
+    lines.pop()
+
+non_empty = [l for l in lines if _visible(l)]
 if non_empty:
     def _leading(l):
-        return len(l) - len(l.lstrip(b' '))
+        plain = _ANSI.sub(b'', l)
+        return len(plain) - len(plain.lstrip(b' '))
     min_margin = min(_leading(l) for l in non_empty)
     if min_margin < 5:
         pad = b' ' * (5 - min_margin)
-        lines = [pad + l if l.strip() else l for l in lines]
+        lines = [pad + l if _visible(l) else l for l in lines]
     out = b'\n'.join(lines)
 
-sys.stdout.buffer.write(out)
+sys.stdout.buffer.write(out + b'\n')
 PYEOF
       [ -s "$SPRITE_CACHE" ] || rm -f "$SPRITE_CACHE"
     fi
